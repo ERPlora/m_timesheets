@@ -1,0 +1,113 @@
+<div x-data="timesheetsApprovals()" class="p-4 space-y-6">
+
+    <!-- Submitted Entries -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ _("Submitted Time Entries") }}</h2>
+        </div>
+        <div class="card-body">
+            {% if submitted_entries %}
+            <div class="list">
+                {% for entry in submitted_entries %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">{{ entry.employee_name or _("Unknown") }}</span>
+                            <span class="text-sm text-muted">{{ entry.date.strftime('%d %b %Y') }}</span>
+                            <span class="chip chip--sm chip--info">{{ entry.status_label }}</span>
+                            {% if entry.billable %}
+                            <span class="chip chip--sm chip--primary">{{ _("Billable") }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-sm mt-1">{{ entry.description or _("No description") }}</div>
+                        <div class="text-xs text-muted mt-0.5">
+                            {{ entry.duration_hours }}h
+                            {% if entry.project_name %} &bull; {{ entry.project_name }}{% endif %}
+                            {% if entry.client_name %} &bull; {{ entry.client_name }}{% endif %}
+                            {% if entry.total_amount is not none %} &bull; {{ entry.total_amount }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="list-item-end flex gap-1">
+                        <button class="btn btn-sm color-success" @click="approveEntry('{{ entry.id }}')">
+                            {{ icon("checkmark-outline", css_class="mr-1") }} {{ _("Approve") }}
+                        </button>
+                        <button class="btn btn-sm color-error" @click="rejectEntry('{{ entry.id }}')">
+                            {{ icon("close-outline", css_class="mr-1") }} {{ _("Reject") }}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-muted">
+                {{ icon("checkmark-circle-outline", css_class="text-4xl block mx-auto mb-2") }}
+                <p>{{ _("No entries pending approval") }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Approval Records -->
+    {% if pending_approvals %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ _("Pending Period Approvals") }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="list">
+                {% for approval in pending_approvals %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">{{ approval.employee_name or _("Unknown") }}</span>
+                            <span class="chip chip--sm chip--warning">{{ approval.status_label }}</span>
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                            {{ approval.period_start.strftime('%d %b') }} - {{ approval.period_end.strftime('%d %b %Y') }}
+                            &bull; {{ approval.total_hours }}h total
+                            &bull; {{ approval.billable_hours }}h billable
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function timesheetsApprovals() {
+    return {
+        async approveEntry(id) {
+            try {
+                const resp = await fetch(`/m/timesheets/approvals/${id}/approve`, {method: 'POST'});
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.ajax('GET', '/m/timesheets/approvals', {target: '#main-content-area'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+
+        async rejectEntry(id) {
+            const notes = prompt('{{ _("Rejection reason (optional):") }}');
+            if (notes === null) return;
+            try {
+                const resp = await fetch(`/m/timesheets/approvals/${id}/reject`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({notes}),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.ajax('GET', '/m/timesheets/approvals', {target: '#main-content-area'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+    }
+}
+</script>

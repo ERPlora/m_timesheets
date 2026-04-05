@@ -1,0 +1,140 @@
+<div x-data="timesheetsRates()" class="p-4 space-y-4">
+
+    <div class="card">
+        <div class="card-header">
+            <div class="flex justify-between items-center">
+                <h2 class="card-title">{{ _("Hourly Rates") }}</h2>
+                <button class="btn btn-sm color-primary" @click="openAdd()">
+                    {{ icon("add-outline", css_class="mr-1") }} {{ _("Add Rate") }}
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if rates %}
+            <div class="list">
+                {% for rate in rates %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div class="flex items-center gap-2">
+                            {{ icon("cash-outline") }}
+                            <span class="font-medium">{{ rate.name }}</span>
+                            <span class="chip chip--sm">{{ rate.rate }}/h</span>
+                            {% if rate.is_default %}
+                            <span class="chip chip--sm chip--primary">{{ _("Default") }}</span>
+                            {% endif %}
+                            {% if not rate.is_active %}
+                            <span class="chip chip--sm chip--warning">{{ _("Inactive") }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="list-item-end">
+                        <button class="btn btn-ghost btn-sm" @click="openEdit('{{ rate.id }}', '{{ rate.name }}', '{{ rate.rate }}', {{ 'true' if rate.is_default else 'false' }}, {{ 'true' if rate.is_active else 'false' }})">
+                            {{ icon("create-outline") }}
+                        </button>
+                        <button class="btn btn-ghost btn-sm text-error" @click="deleteRate('{{ rate.id }}')">
+                            {{ icon("trash-outline") }}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-muted">
+                {{ icon("cash-outline", css_class="text-4xl block mx-auto mb-2") }}
+                <p>{{ _("No hourly rates configured") }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add/Edit Rate Modal -->
+    <div class="modal-backdrop" x-show="showForm" x-cloak>
+        <div class="modal" @click.outside="showForm = false">
+            <div class="modal-header">
+                <h2 class="modal-title" x-text="editingId ? '{{ _("Edit Rate") }}' : '{{ _("Add Rate") }}'"></h2>
+                <button @click="showForm = false" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body space-y-3">
+                <div>
+                    <label class="text-sm font-medium">{{ _("Name") }}</label>
+                    <input type="text" class="input w-full" x-model="form.name" placeholder="{{ _('e.g. Standard, Senior, Overtime') }}">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">{{ _("Rate per hour") }}</label>
+                    <input type="number" class="input w-full" x-model.number="form.rate" min="0" step="0.01">
+                </div>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="toggle" x-model="form.is_default">
+                    <span>{{ _("Default Rate") }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="toggle" x-model="form.is_active">
+                    <span>{{ _("Active") }}</span>
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" @click="showForm = false">{{ _("Cancel") }}</button>
+                <button class="btn color-primary" @click="saveRate()">
+                    <span x-text="editingId ? '{{ _("Save") }}' : '{{ _("Create") }}'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function timesheetsRates() {
+    return {
+        showForm: false,
+        editingId: null,
+        form: { name: '', rate: 0, is_default: false, is_active: true },
+
+        openAdd() {
+            this.editingId = null;
+            this.form = { name: '', rate: 0, is_default: false, is_active: true };
+            this.showForm = true;
+        },
+
+        openEdit(id, name, rate, isDefault, isActive) {
+            this.editingId = id;
+            this.form = { name, rate: parseFloat(rate), is_default: isDefault, is_active: isActive };
+            this.showForm = true;
+        },
+
+        async saveRate() {
+            try {
+                const url = this.editingId
+                    ? `/m/timesheets/rates/${this.editingId}/edit`
+                    : '/m/timesheets/rates/add';
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(this.form),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    this.showForm = false;
+                    htmx.ajax('GET', '/m/timesheets/rates', {target: '#main-content-area'});
+                } else {
+                    htmx.trigger(document.body, 'showMessage', {level: 'error', text: data.error || 'Error'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+
+        async deleteRate(id) {
+            if (!confirm('{{ _("Delete this hourly rate?") }}')) return;
+            try {
+                const resp = await fetch(`/m/timesheets/rates/${id}/delete`, {method: 'POST'});
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.ajax('GET', '/m/timesheets/rates', {target: '#main-content-area'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+    }
+}
+</script>

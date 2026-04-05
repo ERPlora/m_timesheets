@@ -1,0 +1,71 @@
+<div x-data="timesheetsSettings()" class="p-4 space-y-6">
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ _("Timesheets Settings") }}</h2>
+        </div>
+        <div class="card-body space-y-4">
+
+            <div class="space-y-3">
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="toggle" x-model="form.default_billable">
+                    <span>{{ _("Default entries to billable") }}</span>
+                </label>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="toggle" x-model="form.require_approval">
+                    <span>{{ _("Require approval before billing") }}</span>
+                </label>
+            </div>
+
+            <hr class="border-base-300">
+
+            <div>
+                <label class="text-sm font-medium">{{ _("Approval Period") }}</label>
+                <select class="select w-full" x-model="form.approval_period">
+                    <option value="weekly">{{ _("Weekly") }}</option>
+                    <option value="biweekly">{{ _("Bi-weekly") }}</option>
+                    <option value="monthly">{{ _("Monthly") }}</option>
+                </select>
+            </div>
+
+            <button class="btn color-primary" @click="saveSettings()" :disabled="saving">
+                <span x-show="!saving">{{ icon("save-outline", css_class="mr-2") }} {{ _("Save Settings") }}</span>
+                <span x-show="saving" class="loading loading-sm"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function timesheetsSettings() {
+    return {
+        saving: false,
+        form: {
+            default_billable: {{ 'true' if settings.default_billable else 'false' }},
+            require_approval: {{ 'true' if settings.require_approval else 'false' }},
+            approval_period: '{{ settings.approval_period }}',
+        },
+
+        async saveSettings() {
+            this.saving = true;
+            try {
+                const resp = await fetch('/m/timesheets/settings/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(this.form),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.trigger(document.body, 'showMessage', {level: 'success', text: '{{ _("Settings saved") }}'});
+                } else {
+                    htmx.trigger(document.body, 'showMessage', {level: 'error', text: data.error || 'Error'});
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                this.saving = false;
+            }
+        },
+    }
+}
+</script>

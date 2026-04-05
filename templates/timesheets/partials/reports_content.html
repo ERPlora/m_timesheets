@@ -1,0 +1,112 @@
+<div class="p-4 space-y-6">
+
+    <!-- Filters -->
+    <div class="card">
+        <div class="card-body">
+            <form class="flex flex-wrap gap-3 items-end"
+                hx-get="/m/timesheets/reports"
+                hx-target="#main-content-area" hx-swap="innerHTML">
+                <div>
+                    <label class="text-sm font-medium">{{ _("From") }}</label>
+                    <input type="date" class="input input-sm" name="date_from" value="{{ date_from }}">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">{{ _("To") }}</label>
+                    <input type="date" class="input input-sm" name="date_to" value="{{ date_to }}">
+                </div>
+                <button type="submit" class="btn btn-sm color-primary">
+                    {{ icon("filter-outline", css_class="mr-1") }} {{ _("Filter") }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-3xl font-bold">{{ total_hours }}</div>
+                <div class="text-sm text-muted">{{ _("Total Hours") }}</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-3xl font-bold text-primary">{{ billable_hours }}</div>
+                <div class="text-sm text-muted">{{ _("Billable Hours") }}</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-3xl font-bold text-muted">{{ non_billable_hours }}</div>
+                <div class="text-sm text-muted">{{ _("Non-Billable Hours") }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- By Employee -->
+    {% if by_employee %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ _("By Employee") }}</h2>
+        </div>
+        <div class="card-body p-0">
+            <table class="table w-full">
+                <thead>
+                    <tr>
+                        <th>{{ _("Employee") }}</th>
+                        <th class="text-right">{{ _("Total Hours") }}</th>
+                        <th class="text-right">{{ _("Billable") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in by_employee %}
+                    <tr>
+                        <td>{{ emp.employee_name }}</td>
+                        <td class="text-right">{{ emp.total_hours }}</td>
+                        <td class="text-right">{{ emp.billable_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- By Project -->
+    {% if by_project %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">{{ _("By Project") }}</h2>
+        </div>
+        <div class="card-body p-0">
+            <table class="table w-full">
+                <thead>
+                    <tr>
+                        <th>{{ _("Project") }}</th>
+                        <th class="text-right">{{ _("Total Hours") }}</th>
+                        <th class="text-right">{{ _("Billable") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proj in by_project %}
+                    <tr>
+                        <td>{{ proj.project_name }}</td>
+                        <td class="text-right">{{ proj.total_hours }}</td>
+                        <td class="text-right">{{ proj.billable_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not by_employee and not by_project %}
+    <div class="card">
+        <div class="card-body text-center py-8 text-muted">
+            {{ icon("bar-chart-outline", css_class="text-4xl block mx-auto mb-2") }}
+            <p>{{ _("No data for the selected period") }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>

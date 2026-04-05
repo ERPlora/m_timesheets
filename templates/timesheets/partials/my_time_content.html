@@ -1,0 +1,286 @@
+<div x-data="timesheetsMyTime()" class="p-4 space-y-4">
+
+    <!-- Week Navigation -->
+    <div class="flex items-center justify-between">
+        <button class="btn btn-ghost btn-sm"
+            hx-get="/m/timesheets/?week={{ week_offset - 1 }}"
+            hx-target="#main-content-area" hx-swap="innerHTML">
+            {{ icon("chevron-back-outline") }} {{ _("Previous") }}
+        </button>
+        <div class="text-center">
+            <h2 class="text-lg font-semibold">
+                {{ monday.strftime('%d %b') }} — {{ sunday.strftime('%d %b %Y') }}
+            </h2>
+            <div class="text-sm text-muted">
+                {{ _("Total") }}: {{ total_hours }}h
+                &bull; {{ _("Billable") }}: {{ billable_hours }}h
+                &bull; {{ entries_count }} {{ _("entries") }}
+            </div>
+        </div>
+        <button class="btn btn-ghost btn-sm"
+            hx-get="/m/timesheets/?week={{ week_offset + 1 }}"
+            hx-target="#main-content-area" hx-swap="innerHTML">
+            {{ _("Next") }} {{ icon("chevron-forward-outline") }}
+        </button>
+    </div>
+
+    {% if week_offset != 0 %}
+    <div class="text-center">
+        <button class="btn btn-ghost btn-sm text-primary"
+            hx-get="/m/timesheets/?week=0"
+            hx-target="#main-content-area" hx-swap="innerHTML">
+            {{ icon("today-outline", css_class="mr-1") }} {{ _("Back to this week") }}
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Day-by-day entries -->
+    {% for day in days %}
+    <div class="card {% if day.is_today %}ring-2 ring-primary/30{% endif %}">
+        <div class="card-header py-2">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    {% if day.is_today %}
+                    <span class="chip chip--sm chip--primary">{{ _("Today") }}</span>
+                    {% endif %}
+                    <span class="font-medium">{{ day.date.strftime('%A, %d %b') }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted">{{ day.total_hours }}h</span>
+                    <button class="btn btn-ghost btn-sm"
+                        @click="openAddEntry('{{ day.date.isoformat() }}')">
+                        {{ icon("add-outline") }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% if day.entries %}
+        <div class="card-body p-0">
+            <div class="list">
+                {% for entry in day.entries %}
+                <div class="list-item px-4 py-2">
+                    <div class="list-item-content">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-sm">{{ entry.description or _("No description") }}</span>
+                            <span class="chip chip--sm
+                                {% if entry.status == 'draft' %}chip--default
+                                {% elif entry.status == 'submitted' %}chip--info
+                                {% elif entry.status == 'approved' %}chip--success
+                                {% elif entry.status == 'rejected' %}chip--error{% endif %}">
+                                {{ entry.status_label }}
+                            </span>
+                            {% if entry.billable %}
+                            <span class="chip chip--sm chip--primary">{{ _("Billable") }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-muted mt-0.5">
+                            {% if entry.start_time and entry.end_time %}
+                            {{ entry.start_time.strftime('%H:%M') }} - {{ entry.end_time.strftime('%H:%M') }} &bull;
+                            {% endif %}
+                            {{ entry.duration_hours }}h
+                            {% if entry.project_name %} &bull; {{ entry.project_name }}{% endif %}
+                            {% if entry.client_name %} &bull; {{ entry.client_name }}{% endif %}
+                            {% if entry.total_amount is not none %} &bull; {{ entry.total_amount }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="list-item-end">
+                        {% if entry.status == 'draft' %}
+                        <button class="btn btn-ghost btn-sm" title="{{ _('Submit') }}"
+                            @click="submitEntry('{{ entry.id }}')">
+                            {{ icon("send-outline") }}
+                        </button>
+                        <button class="btn btn-ghost btn-sm" title="{{ _('Edit') }}"
+                            @click="openEditEntry('{{ entry.id }}', {{ entry|tojson }})">
+                            {{ icon("create-outline") }}
+                        </button>
+                        <button class="btn btn-ghost btn-sm text-error" title="{{ _('Delete') }}"
+                            @click="deleteEntry('{{ entry.id }}')">
+                            {{ icon("trash-outline") }}
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card-body py-3">
+            <p class="text-sm text-muted text-center">{{ _("No entries") }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Add/Edit Time Entry Modal -->
+    <div class="modal-backdrop" x-show="showForm" x-cloak>
+        <div class="modal" @click.outside="showForm = false">
+            <div class="modal-header">
+                <h2 class="modal-title" x-text="editingId ? '{{ _("Edit Time Entry") }}' : '{{ _("Add Time Entry") }}'"></h2>
+                <button @click="showForm = false" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body space-y-3">
+                <div>
+                    <label class="text-sm font-medium">{{ _("Date") }}</label>
+                    <input type="date" class="input w-full" x-model="form.date">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-sm font-medium">{{ _("Start Time") }}</label>
+                        <input type="time" class="input w-full" x-model="form.start_time">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">{{ _("End Time") }}</label>
+                        <input type="time" class="input w-full" x-model="form.end_time">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm font-medium">{{ _("Duration (minutes)") }}</label>
+                    <input type="number" class="input w-full" x-model.number="form.duration_minutes" min="1" max="1440">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">{{ _("Description") }}</label>
+                    <textarea class="textarea w-full" rows="3" x-model="form.description"
+                        placeholder="{{ _('What did you work on?') }}"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-sm font-medium">{{ _("Project") }}</label>
+                        <input type="text" class="input w-full" x-model="form.project_name" placeholder="{{ _('Optional') }}">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">{{ _("Client") }}</label>
+                        <input type="text" class="input w-full" x-model="form.client_name" placeholder="{{ _('Optional') }}">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm font-medium">{{ _("Hourly Rate") }}</label>
+                    <select class="select w-full" x-model="form.hourly_rate_id">
+                        <option value="">{{ _("None") }}</option>
+                        {% for rate in rates %}
+                        <option value="{{ rate.id }}">{{ rate.name }} ({{ rate.rate }}/h)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <label class="flex items-center gap-3">
+                    <input type="checkbox" class="toggle" x-model="form.billable">
+                    <span>{{ _("Billable") }}</span>
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" @click="showForm = false">{{ _("Cancel") }}</button>
+                <button class="btn color-primary" @click="saveEntry()" :disabled="saving">
+                    <span x-show="!saving" x-text="editingId ? '{{ _("Save") }}' : '{{ _("Add") }}'"></span>
+                    <span x-show="saving" class="loading loading-sm"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function timesheetsMyTime() {
+    return {
+        showForm: false,
+        saving: false,
+        editingId: null,
+        form: {
+            date: '',
+            start_time: '',
+            end_time: '',
+            duration_minutes: 60,
+            description: '',
+            billable: {{ 'true' if settings and settings.default_billable else 'true' }},
+            project_name: '',
+            client_name: '',
+            hourly_rate_id: '',
+        },
+
+        openAddEntry(dateStr) {
+            this.editingId = null;
+            this.form = {
+                date: dateStr,
+                start_time: '',
+                end_time: '',
+                duration_minutes: 60,
+                description: '',
+                billable: {{ 'true' if settings and settings.default_billable else 'true' }},
+                project_name: '',
+                client_name: '',
+                hourly_rate_id: '',
+            };
+            this.showForm = true;
+        },
+
+        openEditEntry(id, entry) {
+            this.editingId = id;
+            this.form = {
+                date: entry.date,
+                start_time: entry.start_time || '',
+                end_time: entry.end_time || '',
+                duration_minutes: entry.duration_minutes,
+                description: entry.description || '',
+                billable: entry.billable,
+                project_name: entry.project_name || '',
+                client_name: entry.client_name || '',
+                hourly_rate_id: entry.hourly_rate_id || '',
+            };
+            this.showForm = true;
+        },
+
+        async saveEntry() {
+            this.saving = true;
+            try {
+                const payload = {...this.form};
+                if (!payload.start_time) delete payload.start_time;
+                if (!payload.end_time) delete payload.end_time;
+                if (!payload.hourly_rate_id) delete payload.hourly_rate_id;
+
+                const url = this.editingId
+                    ? `/m/timesheets/entries/${this.editingId}/edit`
+                    : '/m/timesheets/entries/add';
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    this.showForm = false;
+                    htmx.ajax('GET', '/m/timesheets/?week={{ week_offset }}', {target: '#main-content-area'});
+                } else {
+                    htmx.trigger(document.body, 'showMessage', {level: 'error', text: data.error || 'Error'});
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async submitEntry(id) {
+            try {
+                const resp = await fetch(`/m/timesheets/entries/${id}/submit`, {method: 'POST'});
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.ajax('GET', '/m/timesheets/?week={{ week_offset }}', {target: '#main-content-area'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+
+        async deleteEntry(id) {
+            if (!confirm('{{ _("Delete this time entry?") }}')) return;
+            try {
+                const resp = await fetch(`/m/timesheets/entries/${id}/delete`, {method: 'POST'});
+                const data = await resp.json();
+                if (data.success) {
+                    htmx.ajax('GET', '/m/timesheets/?week={{ week_offset }}', {target: '#main-content-area'});
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+    }
+}
+</script>
