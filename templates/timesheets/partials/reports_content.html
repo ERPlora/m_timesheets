@@ -6,6 +6,7 @@
             <form class="flex flex-wrap gap-3 items-end"
                 hx-get="/m/timesheets/reports"
                 hx-target="#main-content-area" hx-swap="innerHTML">
+                    {{ csrf_input() }}
                 <div>
                     <label class="text-sm font-medium">{{ _("From") }}</label>
                     <input type="date" class="input input-sm" name="date_from" value="{{ date_from }}">

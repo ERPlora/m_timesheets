@@ -6,8 +6,8 @@ Replaces Django forms — used for request validation and form rendering.
 
 from __future__ import annotations
 
+import datetime
 import uuid
-from datetime import date, time
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -48,9 +48,9 @@ class HourlyRateUpdate(BaseModel):
 # ============================================================================
 
 class TimeEntryCreate(BaseModel):
-    date: date
-    start_time: time | None = None
-    end_time: time | None = None
+    date: datetime.date
+    start_time: datetime.time | None = None
+    end_time: datetime.time | None = None
     duration_minutes: int = Field(ge=1, le=1440)
     description: str = ""
     billable: bool = True
@@ -60,9 +60,9 @@ class TimeEntryCreate(BaseModel):
 
 
 class TimeEntryUpdate(BaseModel):
-    date: date | None = None
-    start_time: time | None = None
-    end_time: time | None = None
+    date: datetime.date | None = None
+    start_time: datetime.time | None = None
+    end_time: datetime.time | None = None
     duration_minutes: int | None = Field(default=None, ge=1, le=1440)
     description: str | None = None
     billable: bool | None = None
