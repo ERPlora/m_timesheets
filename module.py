@@ -11,7 +11,7 @@ Migrated from hub legacy (Django) to hub-next (FastAPI + SQLAlchemy 2.0).
 # ---------------------------------------------------------------------------
 MODULE_ID = "timesheets"
 MODULE_NAME = "Timesheets"
-MODULE_VERSION = "2.0.1"
+MODULE_VERSION = "2.0.2"
 MODULE_ICON = "document-text-outline"
 MODULE_DESCRIPTION = "Employee time tracking, billable hours, approvals, and hourly rates"
 MODULE_AUTHOR = "ERPlora"

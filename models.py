@@ -154,6 +154,20 @@ class TimeEntry(HubBaseModel):
     def __repr__(self) -> str:
         return f"<TimeEntry {self.employee_name} {self.date} ({self.duration_minutes}m)>"
 
+    async def get_employee(self, session: object) -> object | None:
+        """Return StaffMember for this entry, or None if not found / staff module unavailable."""
+        try:
+            from staff.models import StaffMember  # lazy cross-module import
+        except ImportError:
+            return None
+        from sqlalchemy import select
+        stmt = select(StaffMember).where(
+            StaffMember.hub_id == self.hub_id,
+            StaffMember.id == self.employee_id,
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
     @property
     def status_label(self) -> str:
         return STATUS_LABELS.get(self.status, self.status)
