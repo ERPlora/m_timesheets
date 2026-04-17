@@ -26,7 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.db.base import HubBaseModel
+from runtime.models.base import HubBaseModel
 
 
 # ============================================================================

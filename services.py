@@ -5,11 +5,11 @@ Timesheets module services — ModuleService pattern for AI assistant integratio
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, UTC
+from datetime import datetime, UTC
 from decimal import Decimal
 
-from app.core.db.transactions import atomic
-from app.modules.services import ModuleService, action
+from runtime.orm.transactions import atomic
+from runtime.apps.service_facade import ModuleService, action
 
 from .models import HourlyRate, TimeEntry, TimesheetsSettings
 

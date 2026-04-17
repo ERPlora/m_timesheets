@@ -15,7 +15,6 @@ MODULE_VERSION = "2.0.4"
 MODULE_ICON = "document-text-outline"
 MODULE_DESCRIPTION = "Employee time tracking, billable hours, approvals, and hourly rates"
 MODULE_AUTHOR = "ERPlora"
-MODULE_CATEGORY = "hr"
 
 # ---------------------------------------------------------------------------
 # Capabilities
